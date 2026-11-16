@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I Spy! - Sight Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Comic Sans MS', 'Chalkboard SE', sans-serif;
+            background-color: #f0f8ff;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        #dashboard {
+            background-color: #fff;
+            padding: 15px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .mission {
+            background-color: #ffe4e1;
+            border: 3px solid #ffb6c1;
+            border-radius: 15px;
+            padding: 10px 20px;
+            font-size: 22px;
+            font-weight: bold;
+            color: #333;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .mission.completed {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+            transform: scale(1.05);
+        }
+
+        #game-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            border: 5px solid #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            overflow: hidden;
+            touch-action: none; /* Prevents scrolling while dragging hitboxes */
+        }
+
+        #game-bg {
+            display: block;
+            width: 100%;
+            height: auto;
+            pointer-events: none; 
+        }
+
+        /* Default Hitbox (Invisible in Play Mode) */
+        .hitbox {
+            position: absolute;
+            cursor: pointer;
+            border-radius: 50%;
+            z-index: 10;
+            color: transparent; /* إخفاء النص في الوضع العادي */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Edit Mode Styles */
+        .edit-mode-active .hitbox {
+            background-color: rgba(255, 0, 0, 0.4);
+            border: 2px dashed #d90000;
+            cursor: grab !important;
+            border-radius: 10px;
+            color: white; /* إظهار النص في وضع التعديل فقط */
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .edit-mode-active .hitbox:active {
+            cursor: grabbing !important;
+        }
+
+        /* Found Object Highlight */
+        .found-circle {
+            position: absolute;
+            border: 5px solid #28a745;
+            border-radius: 50%;
+            box-shadow: 0 0 15px #28a745;
+            z-index: 5;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+            pointer-events: none;
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #message-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            font-weight: bold;
+            padding: 20px 40px;
+            border-radius: 20px;
+            color: white;
+            z-index: 1000;
+            display: none;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .msg-error { background-color: #dc3545; }
+        .msg-success { background-color: #28a745; font-size: 60px !important; }
+
+        .btn {
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            transition: 0.2s;
+        }
+        #restart-btn { background-color: #007bff; }
+        #restart-btn:hover { background-color: #0056b3; }
+        #edit-btn { background-color: #6c757d; }
+        #edit-btn.active { background-color: #dc3545; }
+        
+        #admin-panel {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="dashboard">
+        <div id="score-animals" class="mission">Animals: 0 / 5</div>
+        <div id="score-trees" class="mission">Trees: 0 / 4</div>
+        <div id="score-birds" class="mission">Birds: 0 / 5</div>
+        <div id="score-sea" class="mission">Sea: 0 / 1</div>
+        <button id="restart-btn" class="btn" onclick="location.reload()">Restart Game</button>
+    </div>
+
+    <div id="game-container">
+        <!-- Background Image -->
+        <img id="game-bg" src="background.jpg" alt="Nature Scene" onerror="this.src='https://via.placeholder.com/1200x800?text=Please+save+the+image+as+background.jpg+in+this+folder'">
+
+        <!-- ANIMALS (5) -->
+        <div class="hitbox" data-id="a1" data-type="animals" style="top: 55%; left: 20%; width: 10%; height: 15%;">Lion</div>
+        <div class="hitbox" data-id="a2" data-type="animals" style="top: 60%; left: 40%; width: 10%; height: 15%;">Elephant</div>
+        <div class="hitbox" data-id="a3" data-type="animals" style="top: 65%; left: 30%; width: 10%; height: 15%;">Rabbit</div>
+        <div class="hitbox" data-id="a4" data-type="animals" style="top: 38%; left: 40%; width: 10%; height: 15%;">Monkey</div>
+        <div class="hitbox" data-id="a5" data-type="animals" style="top: 15%; left: 50%; width: 10%; height: 15%;">Giraffe</div>
+
+        <!-- TREES (4) -->
+        <div class="hitbox" data-id="t1" data-type="trees" style="top: 20%; left: 10%; width: 15%; height: 40%;">Tree 1</div>
+        <div class="hitbox" data-id="t2" data-type="trees" style="top: 18%; left: 30%; width: 15%; height: 40%;">Tree 2</div>
+        <div class="hitbox" data-id="t3" data-type="trees" style="top: 30%; left: 45%; width: 15%; height: 40%;">Tree 3</div>
+        <div class="hitbox" data-id="t4" data-type="trees" style="top: 28%; left: 60%; width: 15%; height: 40%;">Tree 4</div>
+
+        <!-- BIRDS (5) -->
+        <div class="hitbox" data-id="b1" data-type="birds" style="top: 10%; left: 18%; width: 7%; height: 7%;">Bird 1</div>
+        <div class="hitbox" data-id="b2" data-type="birds" style="top: 9%; left: 42%; width: 7%; height: 7%;">Bird 2</div>
+        <div class="hitbox" data-id="b3" data-type="birds" style="top: 17%; left: 61%; width: 7%; height: 7%;">Bird 3</div>
+        <div class="hitbox" data-id="b4" data-type="birds" style="top: 15%; left: 81%; width: 7%; height: 7%;">Bird 4</div>
+        <div class="hitbox" data-id="b5" data-type="birds" style="top: 25%; left: 70%; width: 7%; height: 7%;">Bird 5</div>
+
+        <!-- SEA (1) -->
+        <div class="hitbox" data-id="s1" data-type="sea" style="top: 60%; left: 75%; width: 20%; height: 30%;">Sea</div>
+    </div>
+
+    <div id="admin-panel">
+        <button id="edit-btn" class="btn" onclick="toggleEditMode()">🛠️ Edit Hitboxes (تعديل الأماكن)</button>
+        <p style="color:#555; font-size:14px; margin-top:5px;">(للمعلم: اضغط هنا لسحب مربعات التحديد فوق الكائنات، ثم اضغط حفظ)</p>
+    </div>
+
+    <div id="message-overlay"></div>
+
+    <script>
+        // Game Logic & State
+        const scores = { animals: 0, trees: 0, birds: 0, sea: 0 };
+        const targets = { animals: 5, trees: 4, birds: 5, sea: 1 };
+        let isEditMode = false;
+
+        // --- 1. Load Saved Positions (If Any) ---
+        function loadPositions() {
+            document.querySelectorAll('.hitbox').forEach(box => {
+                let saved = localStorage.getItem('hitbox_' + box.dataset.id);
+                if (saved) {
+                    let pos = JSON.parse(saved);
+                    box.style.left = pos.left;
+                    box.style.top = pos.top;
+                }
+            });
+        }
+        loadPositions(); 
+
+        // --- 2. Edit Mode (Drag & Drop Logic) ---
+        let currentDrag = null;
+        let offsetX = 0, offsetY = 0;
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const container = document.getElementById('game-container');
+            const btn = document.getElementById('edit-btn');
+            
+            if (isEditMode) {
+                container.classList.add('edit-mode-active');
+                btn.textContent = '💾 Save Positions (حفظ الأماكن)';
+                btn.classList.add('active');
+            } else {
+                container.classList.remove('edit-mode-active');
+                btn.textContent = '🛠️ Edit Hitboxes (تعديل الأماكن)';
+                btn.classList.remove('active');
+                
+                // Save all new positions to LocalStorage
+                document.querySelectorAll('.hitbox').forEach(box => {
+                    localStorage.setItem('hitbox_' + box.dataset.id, JSON.stringify({
+                        left: box.style.left, 
+                        top: box.style.top
+                    }));
+                });
+                alert('تم حفظ الأماكن الجديدة بنجاح! اللعبة جاهزة الآن.');
+            }
+        }
+
+        document.addEventListener('pointerdown', (e) => {
+            if (!isEditMode) return;
+            if (e.target.classList.contains('hitbox')) {
+                currentDrag = e.target;
+                const rect = currentDrag.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+            }
+        });
+
+        document.addEventListener('pointermove', (e) => {
+            if (!isEditMode || !currentDrag) return;
+            const containerRect = document.getElementById('game-container').getBoundingClientRect();
+            
+            let x = e.clientX - containerRect.left - offsetX;
+            let y = e.clientY - containerRect.top - offsetY;
+
+            let percentX = (x / containerRect.width) * 100;
+            let percentY = (y / containerRect.height) * 100;
+
+            currentDrag.style.left = percentX + '%';
+            currentDrag.style.top = percentY + '%';
+        });
+
+        document.addEventListener('pointerup', () => { currentDrag = null; });
+
+        // --- 3. Audio System ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            
+            if (type === 'correct') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.3);
+            } else if (type === 'wrong') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.2);
+            } else if (type === 'win') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.setValueAtTime(600, audioCtx.currentTime + 0.1);
+                osc.frequency.setValueAtTime(800, audioCtx.currentTime + 0.2);
+                gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+                osc.start(); osc.stop(audioCtx.currentTime + 0.5);
+            }
+        }
+
+        // --- 4. Gameplay Logic ---
+        function showMessage(text, type) {
+            const msgObj = document.getElementById('message-overlay');
+            msgObj.textContent = text;
+            msgObj.className = type === 'error' ? 'msg-error' : 'msg-success';
+            msgObj.style.display = 'block';
+            setTimeout(() => { if(type !== 'win') msgObj.style.display = 'none'; }, 1500);
+        }
+
+        document.querySelectorAll('.hitbox').forEach(box => {
+            box.addEventListener('click', function(e) {
+                if (isEditMode) { e.preventDefault(); return; } 
+                e.stopPropagation(); 
+                
+                if (this.dataset.found === "true") return; 
+
+                const type = this.dataset.type;
+                this.dataset.found = "true";
+                scores[type]++;
+                
+                const scoreElement = document.getElementById(`score-${type}`);
+                let displayName = type.charAt(0).toUpperCase() + type.slice(1);
+                scoreElement.textContent = `${displayName}: ${scores[type]} / ${targets[type]}`;
+                
+                const circle = document.createElement('div');
+                circle.className = 'found-circle';
+                circle.style.top = this.style.top;
+                circle.style.left = this.style.left;
+                circle.style.width = this.style.width;
+                circle.style.height = this.style.height;
+                if(type === 'sea') circle.style.borderRadius = '10%'; 
+                document.getElementById('game-container').appendChild(circle);
+
+                playSound('correct');
+
+                if (scores[type] === targets[type]) scoreElement.classList.add('completed');
+                checkWin();
+            });
+        });
+
+        document.getElementById('game-container').addEventListener('click', function(e) {
+            if(isEditMode) return;
+            if(e.target.id === 'game-bg' || e.target.id === 'game-container') {
+                playSound('wrong');
+                showMessage("Try again! 👀", "error");
+            }
+        });
+
+        function checkWin() {
+            if (scores.animals === targets.animals && scores.trees === targets.trees && 
+                scores.birds === targets.birds && scores.sea === targets.sea) {
+                setTimeout(() => {
+                    playSound('win');
+                    showMessage("🌟 GREAT JOB! 🌟", "win");
+                }, 500);
+            }
+        }
+    </script>
+</body>
+  </html>
+          
